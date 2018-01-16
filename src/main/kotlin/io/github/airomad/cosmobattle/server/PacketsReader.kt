@@ -2,9 +2,8 @@ package io.github.airomad.cosmobattle.server
 
 class PacketsReader {
     companion object {
-        fun read(packet: String) {
-            val array = packet.split('|')
-            println(array)
+        fun read(packet: String?): Packet {
+            return Packet("Test")
         }
     }
 }

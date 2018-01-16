@@ -5,12 +5,11 @@ import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
 import java.lang.Exception
 import java.net.InetSocketAddress
-import java.util.*
 
 
 class Server(private val inetAddress: InetSocketAddress) : WebSocketServer(inetAddress) {
-    private lateinit var gmResolver: GameWorldResolver
-    private val packets: Queue<String> = PriorityQueue<String>()
+    private lateinit var gmResolver: GameWorldInstance
+
 
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
         broadcast("Connected new client: ${handshake?.resourceDescriptor}")
@@ -22,15 +21,17 @@ class Server(private val inetAddress: InetSocketAddress) : WebSocketServer(inetA
     }
 
     override fun onMessage(conn: WebSocket?, message: String?) {
-        packets.add(message)
+        val packet = PacketsReader.read(message)
+        PacketsQueue.push(packet)
+        println("packet pushed. Size is: ${PacketsQueue.size}")
         broadcast("[${conn?.remoteSocketAddress}] $message")
         println("[${conn?.remoteSocketAddress}] $message")
     }
 
     override fun onStart() {
         println("Server successfully started on ${this.inetAddress.hostName}:${this.inetAddress.port}.")
-        gmResolver = GameWorldResolver()
-        gmResolver.run()
+        gmResolver = GameWorldInstance()
+        Thread(gmResolver).start()
     }
 
     override fun onError(conn: WebSocket?, ex: Exception?) {
@@ -38,18 +39,25 @@ class Server(private val inetAddress: InetSocketAddress) : WebSocketServer(inetA
     }
 }
 
-class GameWorldResolver : Runnable {
+class GameWorldInstance : Runnable {
     var running: Boolean = false
 
     override fun run() {
         running = true
         println("Running Game World Instance..")
         while (running) {
+            if (PacketsQueue.size > 0) {
+                val packet = PacketsQueue.pop()
+                println("packet poped. Size is: ${PacketsQueue.size}")
+            }
             try {
                 Thread.sleep(100)
+            } catch (ex: InterruptedException) {
+                Thread.currentThread().interrupt()
             } catch (e: Exception) {
                 println("Cant sleep for 100 ms")
             }
         }
+        println("Stopping Game World Instance..")
     }
 }
